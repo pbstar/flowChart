@@ -1,0 +1,11 @@
+.iphone_bottom {
+  box-sizing: content-box;
+  padding-bottom: constant(safe-area-inset-bottom);
+  /*兼容 IOS<11.2*/
+  padding-bottom: env(safe-area-inset-bottom);
+  /*兼容 IOS>11.2*/
+}
+
+#map div {
+  box-sizing: content-box;
+}

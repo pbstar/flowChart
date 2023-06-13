@@ -26,16 +26,27 @@
             </div>
           </div>
         </el-tree>
+        <div class="leftBot">
+          <el-button
+            type="primary"
+            icon="el-icon-download"
+            style="width: 100%"
+            @click="toLoad"
+            :loading="loadLoading"
+            >下载</el-button
+          >
+        </div>
       </div>
       <div class="right">
-        <div id="map"></div>
+        <div id="map" ref="captureArea"></div>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-// import "@/assets/js/flowchart.min.js";
+import html2canvas from "html2canvas";
+import { saveAs } from "file-saver";
 export default {
   name: "chartHome",
   components: {},
@@ -43,10 +54,11 @@ export default {
     return {
       list: [
         {
-          topic: "网创",
+          topic: "",
           children: [],
         },
       ],
+      loadLoading: false,
     };
   },
   watch: {
@@ -54,6 +66,8 @@ export default {
       handler(to, from) {
         if (to.length > 0) {
           let obj = new Object();
+          // console.log(to);
+          // this.$unit.setLocalStorage("chartList", JSON.stringify(to));
           obj.nodeData = to[0];
           let mind = new MindElixirLite({ el: "#map" });
           mind.init(obj);
@@ -62,7 +76,12 @@ export default {
       deep: true,
     },
   },
-  created() {},
+  created() {
+    let list = this.$unit.getLocalStorage("chartList");
+    if (list) {
+      this.list = JSON.parse(list);
+    }
+  },
   mounted() {
     let obj = new Object();
     obj.nodeData = this.list[0];
@@ -72,33 +91,65 @@ export default {
   methods: {
     add(data) {
       let id = data.$treeNodeId;
-      this.getIdObj(this.list, id, 1, 0);
+      let obj = findObjectWithPropertyValue(this.list, "$treeNodeId", id);
+      obj.children.push({
+        topic: "",
+        children: [],
+      });
+      function findObjectWithPropertyValue(arr, key, value) {
+        let result = null;
+        for (const item of arr) {
+          if (item[key] === value) {
+            return item;
+          }
+          if (Array.isArray(item.children) && item.children.length > 0) {
+            result = findObjectWithPropertyValue(item.children, key, value);
+            if (result) {
+              return result;
+            }
+          }
+        }
+        return result;
+      }
     },
     del(data) {
       let id = data.$treeNodeId;
-      this.getIdObj(this.list, id, 2, 0);
+      removeObjectWithPropertyValue(this.list, "$treeNodeId", id);
+      function removeObjectWithPropertyValue(arr, key, value) {
+        for (let i = 0; i < arr.length; i++) {
+          if (arr[i][key] === value) {
+            arr.splice(i, 1);
+            return true;
+          }
+          if (Array.isArray(arr[i].children) && arr[i].children.length > 0) {
+            const result = removeObjectWithPropertyValue(
+              arr[i].children,
+              key,
+              value
+            );
+            if (result) {
+              return true;
+            }
+          }
+        }
+        return false;
+      }
     },
-    getIdObj(arr, id, type, arrIndex) {
-      console.log(arr, id, type, arrIndex);
-      if (id == arr[arrIndex].$treeNodeId) {
-        console.log(arr, id, type, arrIndex);
-        if (type == 1) {
-          arr[arrIndex].children.push({
-            topic: "",
-            children: [],
+    async toLoad() {
+      this.loadLoading = true;
+      try {
+        const canvas = await html2canvas(this.$refs.captureArea);
+        canvas.toBlob((blob) => {
+          saveAs(blob, "image.png");
+          this.loadLoading = false;
+          this.$message({
+            message: "下载成功",
+            type: "success",
           });
-        } else if (type == 2) {
-          arr.splice(arrIndex, 1);
-        }
-      } else {
-        console.log(arrIndex, 888, arr.length);
-        if (arrIndex == arr.length - 1) {
-          arrIndex = 0;
-          this.getIdObj(arr[arrIndex].children, id, type, arrIndex);
-        } else {
-          arrIndex++;
-          this.getIdObj(arr, id, type, arrIndex);
-        }
+        });
+      } catch (error) {
+        this.loadLoading = false;
+        console.error("下载图片失败:", error);
       }
     },
   },
@@ -111,8 +162,10 @@ export default {
     width: 320px;
     height: 100vh;
     padding-top: 10px;
-
     overflow: auto;
+    display: flex;
+    justify-content: space-between;
+    flex-direction: column;
     /deep/ .el-tree-node__content {
       height: 38px;
     }
@@ -129,6 +182,9 @@ export default {
         width: 180px;
       }
     }
+    .leftBot {
+      padding: 10px;
+    }
   }
   .right {
     width: calc(100% - 320px);
@@ -137,6 +193,14 @@ export default {
       width: 100%;
       height: 100%;
       background-color: #eee;
+    }
+    /deep/ .mind-elixir-toolbar {
+      display: none;
+    }
+    #map:hover {
+      /deep/ .mind-elixir-toolbar {
+        display: block;
+      }
     }
   }
 }

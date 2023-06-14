@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="body">
-      <div class="left">
+      <div class="left" :style="isLeftShow ? 'width:320px' : 'width:0'">
         <el-tree
           :data="list"
           node-key="id"
@@ -37,8 +37,17 @@
           >
         </div>
       </div>
-      <div class="right">
+      <div
+        class="right"
+        :style="isLeftShow ? 'width:calc(100% - 320px)' : 'width:100%'"
+      >
         <div id="map" ref="captureArea"></div>
+        <div class="tip">
+          <i
+            @click="toLeftShow"
+            :class="isLeftShow ? 'el-icon-arrow-left' : 'el-icon-arrow-right'"
+          ></i>
+        </div>
       </div>
     </div>
   </div>
@@ -59,6 +68,7 @@ export default {
         },
       ],
       loadLoading: false,
+      isLeftShow: true,
     };
   },
   watch: {
@@ -66,8 +76,7 @@ export default {
       handler(to, from) {
         if (to.length > 0) {
           let obj = new Object();
-          // console.log(to);
-          // this.$unit.setLocalStorage("chartList", JSON.stringify(to));
+          this.toSetList(to);
           obj.nodeData = to[0];
           let mind = new MindElixirLite({ el: "#map" });
           mind.init(obj);
@@ -152,6 +161,24 @@ export default {
         console.error("下载图片失败:", error);
       }
     },
+    toSetList(to) {
+      function removeProperty(obj, prop) {
+        for (var i in obj) {
+          if (i == prop) {
+            delete obj[i];
+          } else if (typeof obj[i] == "object") {
+            removeProperty(obj[i], prop);
+          }
+        }
+      }
+      for (var i = 0; i < to.length; i++) {
+        removeProperty(to[i], "parent");
+      }
+      this.$unit.setLocalStorage("chartList", JSON.stringify(to));
+    },
+    toLeftShow() {
+      this.isLeftShow = !this.isLeftShow;
+    },
   },
 };
 </script>
@@ -159,6 +186,7 @@ export default {
 .body {
   display: flex;
   .left {
+    transition: width 0.3s linear;
     width: 320px;
     height: 100vh;
     padding-top: 10px;
@@ -188,7 +216,9 @@ export default {
   }
   .right {
     width: calc(100% - 320px);
+    transition: width 0.3s linear;
     height: 100vh;
+    position: relative;
     #map {
       width: 100%;
       height: 100%;
@@ -197,8 +227,22 @@ export default {
     /deep/ .mind-elixir-toolbar {
       display: none;
     }
-    #map:hover {
+    .tip {
+      position: absolute;
+      display: none;
+      bottom: 20px;
+      left: 20px;
+      background: #fff;
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+      font-size: 15px;
+    }
+    &:hover {
       /deep/ .mind-elixir-toolbar {
+        display: block;
+      }
+      .tip {
         display: block;
       }
     }
